@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: keycloak-db-archive
+  namespace: alumni-portal-prod
+spec:
+  schedule: "35 16 * * *" # Triggers at exactly 4:35 PM
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: postgres-export-agent
+            image: postgres:15
+            resources:
+              requests: { cpu: "50m", memory: "64Mi" }
+              limits: { cpu: "100m", memory: "128Mi" }
+            command:
+            - /bin/bash
+            - -c
+            - |
+              echo "1. Installing MinIO Client..."
+              apt-get update && apt-get install -y curl ca-certificates
+              curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
+              chmod +x mc
+              
+              echo "2. Connecting to Vault..."
+              # IMPORTANT: Replace MINIO_USER and MINIO_PASS below!
+              ./mc alias set vault http://192.168.41.37:32001 admin root@123
+              
+              echo "3. Executing Keycloak Postgres Export..."
+              PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h postgres -U $POSTGRES_USER -d keycloak -F c -f /tmp/keycloak.dump
+              
+              echo "4. Streaming to Vault..."
+              ./mc cp /tmp/keycloak.dump vault/prod-cluster-backups/pg-keycloak-$(date +%Y%m%d).dump
+              echo "Backup Complete!"
+            env:
+              - name: POSTGRES_USER
+                value: "keycloak"
+              - name: POSTGRES_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: alumni-secrets
+                    key: POSTGRES_PASSWORD
+          restartPolicy: OnFailure

@@ -1,0 +1,41 @@
+velero:
+  deployNodeAgent: true
+  upgradeCRDs: false
+  defaultVolumesToFsBackup: true 
+
+  nodeAgent:
+    # 1. Tolerate the master node security taints
+    tolerations:
+      - operator: Exists
+      
+    # 2. Delete the default rule that blocks master nodes
+    affinity: {}
+    
+    # 3. Shrink the footprint so it fits on your crowded worker node!
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        cpu: "50m"
+        memory: "512Mi"
+
+  configuration:
+    backupStorageLocation:
+      - name: default
+        provider: aws
+        bucket: dev-cluster-backups
+        config:
+          region: minio
+          s3ForcePathStyle: true
+          s3Url: "http://192.168.41.37:32000"
+    volumeSnapshotLocation:
+      - name: default
+        provider: aws
+        config:
+          region: minio
+          
+  kubectl:
+    image:
+      repository: docker.io/bitnami/kubectl
+      tag: "1.30.0"

@@ -1,0 +1,52 @@
+velero:
+  deployNodeAgent: true
+  upgradeCRDs: false
+  
+  # 1. Constrain the main Velero server
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # 2. Constrain the Node Agent daemon (Runs on every node)
+  nodeAgent:
+    podVolumePath: /var/lib/kubelet/pods
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  configuration:
+    backupStorageLocation:
+      - name: default
+        provider: aws
+        bucket: prod-cluster-backups
+        config:
+          region: minio
+          s3ForcePathStyle: true
+          s3Url: "http://192.168.41.37:32000"
+    volumeSnapshotLocation:
+      - name: default
+        provider: aws
+          
+  # The fix to stop it from guessing v1.34
+  kubectl:
+    image:
+      repository: docker.io/bitnami/kubectl
+      tag: "1.30.0"
+
+  # 3. NEW: The 4:15 PM Automated Schedule (Track 1)
+  schedules:
+    prod-state-backup:
+      disabled: false
+      schedule: "35 16 * * *" # Triggers at exactly 4:35 PM
+      template:
+        ttl: "168h" # Automatically deletes old backups after 7 days
+        includedNamespaces:
+          - '*'

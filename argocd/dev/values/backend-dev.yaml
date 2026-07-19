@@ -1,0 +1,17 @@
+image:
+  repository: "avitheg/alumni-backend"
+  tag: "docs-v3"
+
+env:
+  NODE_ENV: "development"
+  KEYCLOAK_ISSUER: "https://192.168.41.88/auth/realms/application"
+
+  OTEL_SERVICE_NAME: "alumni-backend"
+  
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318"
+
+  OTEL_LOG_LEVEL: "info"
+
+  # NODE_OPTIONS: "--require ./src/telemetry.js"
+prometheus:
+ release: alumni-observability-dev

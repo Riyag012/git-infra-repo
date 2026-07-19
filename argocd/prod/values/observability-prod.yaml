@@ -1,0 +1,88 @@
+# argocd/prod/values/observability-prod.yaml
+
+# --- INTEGRATION SETTINGS ---
+# These values are used by the ServiceMonitor templates in charts/backend/
+prometheus:
+  release: "alumni-observability-prod"
+appLabel: "alumni-backend"
+
+# --- INFRASTRUCTURE OVERRIDES ---
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 2d
+      podMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelectorNilUsesHelmValues: false
+      resources:
+        requests:
+          memory: 512Mi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: "local-path" 
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+
+  grafana:
+    adminPassword: "admin-production"
+    enabled: true
+    service:
+      type: LoadBalancer 
+      annotations:
+        metallb.universe.tf/address-pool: local-ip-pool
+    persistence:
+      enabled: true
+      type: pvc
+      storageClassName: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 5Gi 
+      finalizers:
+        - kubernetes.io/pvc-protection
+    
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://alumni-observability-prod-loki:3100
+        access: proxy
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"traceId":"(\w+)"'
+              datasourceUid: tempo  
+              url: '$${__value.raw}' 
+      - name: Tempo
+        type: tempo
+        uid: tempo                   
+        url: http://alumni-observability-prod-tempo:3100
+
+loki-stack:
+  grafana:
+    enabled: false
+  loki:
+    limits_config:
+      retention_period: 48h
+      reject_old_samples: true
+      reject_old_samples_max_age: 48h
+    persistence:
+      enabled: true
+      storageClassName: "local-path"
+      size: 10Gi
+  promtail:
+    enabled: true 
+    config:
+      clients:
+        - url: http://alumni-observability-prod-loki:3100/loki/api/v1/push
+
+tempo:
+  retention: 48h
+  persistence:
+    enabled: true
+    storageClassName: "local-path"
+    size: 10Gi
+
+# OTel Forwarding (Port 4317 is Tempo gRPC)
+otel:
+  endpoint: "http://alumni-observability-prod-tempo:4317"

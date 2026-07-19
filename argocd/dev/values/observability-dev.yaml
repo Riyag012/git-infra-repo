@@ -1,0 +1,93 @@
+# ALIGNED DEV OBSERVABILITY OVERRIDES VALUE STREAM
+
+# --- INTEGRATION SETTINGS ---
+# These values are used by the ServiceMonitor templates in charts/backend/
+prometheus:
+  release: "alumni-observability-dev"
+appLabel: "alumni-backend"
+
+# --- INFRASTRUCTURE OVERRIDES ---
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 2d
+      # Crucial: Keeps custom monitors discoverable within your sandbox env
+      podMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelectorNilUsesHelmValues: false
+      resources:
+        requests:
+          memory: 512Mi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: "local-path" 
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi # Reduced from 20Gi for lightweight Dev VM usage
+
+  grafana:
+    adminPassword: "admin"
+    enabled: true
+    service:
+      type: LoadBalancer 
+      annotations:
+        metallb.universe.tf/address-pool: local-ip-pool
+    persistence:
+      enabled: true
+      type: pvc
+      storageClassName: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 5Gi # Optimized for development footprint
+      finalizers:
+        - kubernetes.io/pvc-protection
+        
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://alumni-observability-dev-loki:3100
+        # --- THE MISSING MAGIC LINK FOR THE TEMPO BUTTON ---
+        jsonData:
+          derivedFields:
+            - name: TraceID
+              matcherRegex: '"traceId":"(\w+)"'
+              datasourceUid: tempo   # This links directly to the Tempo UID below
+              url: '$${__value.raw}' # Double $$ to escape Helm templating
+      - name: Tempo
+        type: tempo
+        uid: tempo                   # Added UID so Loki can find it
+        url: http://alumni-observability-dev-tempo:3100
+
+# FIXED: Aligned structural naming key from 'loki' to 'loki-stack'
+loki-stack:
+  grafana:
+    enabled: false
+  loki:
+    # Do NOT put retention_period inside a 'config' block.
+    # Use limits_config at this level:
+    limits_config:
+      retention_period: 48h
+      reject_old_samples: true
+      reject_old_samples_max_age: 48h
+    persistence:
+      enabled: true
+      storageClassName: "local-path"
+      size: 10Gi
+  promtail:
+    enabled: true 
+    config:
+      clients:
+        - url: http://alumni-observability-dev-loki:3100/loki/api/v1/push
+
+tempo:
+  retention: 48h
+  persistence:
+    enabled: true
+    storageClassName: "local-path"
+    size: 10Gi # Reduced from 10Gi for space saving
+otel:
+  # The Collector is acting as a "Forwarder".
+  # It is being told: "Take everything you receive, and send it HERE."
+  # Port 4317 is the standard OTLP/gRPC port for Tempo ingestion.
+  endpoint: "http://alumni-observability-dev-tempo:4317"

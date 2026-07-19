@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dr-minio-vault
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanishkpandey18/git-infra-repo.git'
+    targetRevision: main
+    path: charts/minio-vault
+    helm:
+      valueFiles:
+        - ../../argocd/dr/values/minio-vault.yaml
+  destination:
+    name: backup-cluster
+    namespace: minio
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

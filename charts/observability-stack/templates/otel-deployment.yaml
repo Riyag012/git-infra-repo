@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+      annotations:
+        # MAGIC TRICK: Pod auto-restarts if otel-configmap.yaml changes
+        checksum/config: {{ include (print $.Template.BasePath "/otel-configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+      - name: otel-collector
+        image: "{{ .Values.otel.image.repository | default "otel/opentelemetry-collector" }}:{{ .Values.otel.image.tag | default "0.100.0" }}"
+        args: ["--config=/etc/otel-collector-config.yaml"]
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/otel-collector-config.yaml
+          subPath: config.yaml
+        ports:
+        - containerPort: 4317
+          name: otlp-grpc
+        - containerPort: 4318
+          name: otlp-http
+        
+        # Protective resource limits for the Dev cluster
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+            
+      volumes:
+      - name: config-volume
+        configMap:
+          name: otel-collector-config

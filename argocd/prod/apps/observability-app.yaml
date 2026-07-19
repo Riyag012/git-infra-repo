@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alumni-observability-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanishkpandey18/git-infra-repo.git'
+    targetRevision: main
+    # 🟢 Pulls from the exact same Umbrella chart as Dev
+    path: charts/observability-stack
+    helm:
+      valueFiles:
+        # 🟢 Applies the heavy-duty Production overrides
+        - ../../argocd/prod/values/observability-prod.yaml
+  destination:
+    # 🟢 Routes across the network to your Production cluster
+    name: prod-cluster 
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

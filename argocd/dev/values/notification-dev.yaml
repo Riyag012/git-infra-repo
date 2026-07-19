@@ -1,0 +1,7 @@
+image:
+  repository: "192.168.41.90:8082/alumni-notification"
+  tag: "v4"
+
+env:
+  # Strictly isolated to the Dev cluster namespace
+  KAFKA_BROKER: "kafka.alumni-portal-dev.svc.cluster.local:9092"

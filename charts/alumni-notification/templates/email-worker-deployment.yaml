@@ -14,14 +14,19 @@ spec:
       labels:
         app: notification-email-worker
     spec:
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
       containers:
         - name: email-worker
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["node", "workers/emailWorker.js"]
           env:
+            # --- Dynamic Cluster Routing URL ---
             - name: KAFKA_BROKER
-              value: {{ .Values.env.KAFKA_BROKER | quote }}
+              value: "kafka.{{ .Release.Namespace }}.svc.cluster.local:9092"
+              
+            # --- Secrets Configuration ---
             - name: RESEND_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -32,5 +37,5 @@ spec:
               cpu: 500m
               memory: 512Mi
             requests:
-              cpu: 100m
+              cpu: 50m
               memory: 256Mi

@@ -21,6 +21,8 @@ spec:
           value: "xforwarded"
         - name: KC_HOSTNAME_STRICT
           value: "false"
+        - name: KC_HOSTNAME
+          value: "https://jecrconnect.xyz"
 
         - name: KC_HTTP_RELATIVE_PATH  # <-- ADD THIS
           value: "/auth"               # <-- ADD THIS

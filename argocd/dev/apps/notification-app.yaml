@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alumni-notification-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanishkpandey18/git-infra-repo.git'
+    targetRevision: main
+    path: charts/alumni-notification
+    helm:
+      valueFiles:
+        - ../../argocd/dev/values/notification-dev.yaml
+  destination:
+    name: dev-cluster
+    namespace: alumni-portal-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,35 @@
+controller:
+  # 1. Hardcoded Admin Credentials
+  admin:
+    username: "admin"
+    password: "root@123"
+
+  # 2. Restrict JVM and Container Memory
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1024Mi"
+  javaOpts: "-Xms512m -Xmx512m"
+
+  # 3. Change Ports to avoid Keycloak clash (8080)
+  servicePort: 8083
+  targetPort: 8083
+  serviceType: LoadBalancer
+
+agent:
+  # 4. Adjust the Agent Resource Limits for builds
+  resources:
+    requests:
+      cpu: "256m"
+      memory: "256Mi"
+    limits:
+      cpu: "512m"
+      memory: "512Mi"
+
+persistence:
+  # 5. Lower the Storage Requirement
+  enabled: true
+  size: "5Gi"

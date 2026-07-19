@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1beta1 # Best practice: upgraded from v1alpha3 to v1beta1
+kind: DestinationRule
+metadata:
+  name: alumni-backend-rule
+  # MODULAR FIX 1: Injects wherever ArgoCD deploys it
+  namespace: {{ .Release.Namespace }}
+spec:
+  # MODULAR FIX 2: Dynamically builds the Fully Qualified Domain Name (FQDN)
+  # Istio highly recommends FQDNs to prevent routing ambiguity
+  host: "alumni-backend-service.{{ .Release.Namespace }}.svc.cluster.local"
+  
+  trafficPolicy:
+    tls:
+      # PROD FIX 3: Keep this as ISTIO_MUTUAL for production security.
+      # Istio will automatically generate and rotate the SSL certs for you.
+      # (Change to DISABLE only if you are completely removing Istio sidecars)
+      mode: ISTIO_MUTUAL

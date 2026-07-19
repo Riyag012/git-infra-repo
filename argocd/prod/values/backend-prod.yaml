@@ -1,0 +1,17 @@
+image:
+  repository: "avitheg/alumni-backend"
+  tag: "docs-v3"
+
+env:
+  NODE_ENV: "production"
+  KEYCLOAK_ISSUER: "https://jecrconnect.xyz/auth/realms/application"
+
+  # --- OpenTelemetry Integration ---
+  # HTTP Port 4318 for the Node.js auto-instrumentation
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318"
+  # This makes the traces show up clearly labeled in the Grafana/Tempo UI
+  OTEL_SERVICE_NAME: "alumni-backend-prod"
+
+prometheus:
+ release: alumni-observability-prod
+

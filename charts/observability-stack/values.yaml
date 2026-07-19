@@ -1,0 +1,120 @@
+# -- Prometheus & Grafana Configuration
+kube-prometheus-stack:
+  # 💥 THE GLOBAL BRAIN INJECTION 💥
+  alertmanager:
+    config:
+      route:
+        group_by: ['alertname', 'severity']
+        group_wait: 5s 
+        group_interval: 1m
+        repeat_interval: 1h
+        receiver: 'notification-api'
+        routes:
+          - matchers:
+              - alertname="PrometheusRuleFailures"
+            receiver: 'blackhole'
+          - matchers:
+              - alertname="Watchdog"
+            receiver: 'blackhole'
+          - matchers:
+              - severity="critical"
+            receiver: 'notification-api'
+      receivers:
+        - name: 'blackhole'
+        - name: 'notification-api'
+          webhook_configs:
+            - url: 'http://alumni-notification-api-service.alumni-portal-dev.svc.cluster.local:3000/api/v1/notify'
+              send_resolved: true
+
+  # 1. Stop trying to scrape the secure control plane components
+  kubeControllerManager:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubeProxy:
+    enabled: false
+
+  # 2. Keep the good default rules, but disable the ones for the components above
+  defaultRules:
+    create: true
+    rules:
+      kubeControllerManager: false
+      kubeScheduler: false
+      etcd: false
+      kubeProxy: false
+
+  prometheus:
+    service:
+      type: LoadBalancer
+      annotations:
+        metallb.universe.tf/address-pool: local-ip-pool
+    prometheusSpec:
+      podMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelectorNilUsesHelmValues: false
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: "local-path" 
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+
+  grafana:
+    enabled: true
+    adminPassword: "admin" 
+    service:
+      type: LoadBalancer 
+      annotations:
+        metallb.universe.tf/address-pool: local-ip-pool
+    persistence:
+      enabled: true
+      type: pvc
+      storageClassName: "local-path"
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      finalizers:
+        - kubernetes.io/pvc-protection
+        
+    additionalDataSources: [] 
+
+# -- Loki (Logs) Configuration
+loki-stack:
+  loki:
+    persistence:
+      enabled: true
+      storageClassName: "local-path"
+      size: 10Gi
+  promtail:
+    enabled: true 
+    config:
+      clients: []
+      
+# -- Tempo (Traces) Configuration
+tempo:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+  persistence:
+    enabled: true
+    storageClassName: "local-path"
+    size: 10Gi
+    
+# -- Custom OpenTelemetry Collector Settings
+otel:
+  image:
+    repository: "otel/opentelemetry-collector-contrib"
+    tag: "0.100.0"

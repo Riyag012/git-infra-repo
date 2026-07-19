@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  # Unique name per release prevents collisions
+  name: {{ .Release.Name }}-backend-monitor
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Chart.Name }}
+    # This label is the one Prometheus uses to find this monitor!
+    release: {{ .Values.prometheus.release | default "alumni-observability-dev" }}
+spec:
+  selector:
+    matchLabels:
+      # This MUST match the labels in your Backend Deployment/Service
+      app: {{ .Values.appLabel | default "alumni-backend" }}
+  endpoints:
+    - port: http-api
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

@@ -51,6 +51,39 @@ resource "helm_release" "istiod" {
   chart      = "istiod"
   version    = "1.20.0"
   namespace  = "istio-system"
+
+  # Resource allocations from file 1
+  values = [
+    yamlencode({
+      pilot = {
+        resources = {
+          requests = {
+            cpu    = "50m"
+            memory = "256Mi"
+          }
+        }
+      }
+    })
+  ]
+
+  # --- TRACING CONFIGURATION START --- (from file 2)
+  set {
+    name  = "meshConfig.enableTracing"
+    value = "true"
+  }
+  set {
+    name  = "meshConfig.extensionProviders[0].name"
+    value = "otel-tracing"
+  }
+  set {
+    name  = "meshConfig.extensionProviders[0].opentelemetry.port"
+    value = "4317"
+  }
+  set {
+    name  = "meshConfig.extensionProviders[0].opentelemetry.service"
+    value = "otel-collector.observability.svc.cluster.local"
+  }
+  # --- TRACING CONFIGURATION END ---
 }
 
 resource "helm_release" "istio_ingress" {

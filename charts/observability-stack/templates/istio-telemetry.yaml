@@ -1,0 +1,15 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system # This applies the policy cluster-wide
+spec:
+  tracing:
+  - providers:
+    - name: "otel-tracing" # Must match the name defined in Terraform set block
+    randomSamplingPercentage: 100.0 # Change to 1.0 or 5.0 later for production
+  
+  # Optional: Adds standard Kubernetes metadata to all spans
+  accessLogging:
+  - providers:
+    - name: "envoy"

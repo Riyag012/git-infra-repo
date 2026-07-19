@@ -1,0 +1,35 @@
+nexus-repository-manager:
+  nexus:
+    imageName: sonatype/nexus3
+    imageTag: 3.68.1
+    env:
+      - name: NEXUS_CONTEXT
+        value: "nexus"
+    docker:
+      enabled: true
+      registries:
+        - port: 8082
+    # Fix: Ensure the probes check the new context path
+    livenessProbe:
+      path: /nexus/
+      initialDelaySeconds: 30
+    readinessProbe:
+      path: /nexus/
+      initialDelaySeconds: 30
+
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 50Gi
+    # Ensure this matches your RKE2 storage class (usually local-path)
+    storageClass: "local-path" 
+
+  service:
+    type: LoadBalancer
+    name: nexus-ui
+    ports:
+      - name: nexus-ui
+        port: 8081       # For the Web UI
+      - name: docker-repo
+        port: 8082
+    

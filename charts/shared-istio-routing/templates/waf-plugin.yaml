@@ -1,0 +1,45 @@
+{{- $enabled := false }}
+{{- if kindIs "string" .Values.wafEnabled }}
+  {{- if eq .Values.wafEnabled "true" }}
+    {{- $enabled = true }}
+  {{- end }}
+{{- else if kindIs "bool" .Values.wafEnabled }}
+  {{- $enabled = .Values.wafEnabled }}
+{{- end }}
+
+{{- if $enabled }}
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: coraza-waf-{{ .Release.Namespace }}
+  namespace: istio-system # MUST be istio-system to protect the gateway
+  labels:
+    app: coraza-waf
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  url: oci://ghcr.io/corazawaf/coraza-proxy-wasm:latest
+  imagePullPolicy: IfNotPresent
+  phase: AUTHN
+  pluginConfig:
+    directives_map:
+      default:
+        - "SecRuleEngine On"
+        - "SecRequestBodyAccess On"
+        - "SecResponseBodyAccess Off"
+        - "SecDebugLogLevel 0"
+        
+        # Your stable, proven rules
+        - "SecRule ARGS \"'(?:--|#|\\*|\\+)\" \"id:1001,phase:2,deny,status:403,msg:'SQL Injection Blocked'\""
+        - "SecRule ARGS \"(?i)\\bhas_key\\b|\\bor\\b\\s+\\d+\\s*=\\s*\\d+|\\bunion\\b\\s+select\" \"id:1005,phase:2,deny,status:403,msg:'SQL Tautology Bypass Blocked'\""
+        - "SecRule ARGS \"(?i)<script\" \"id:1002,phase:2,deny,status:403,msg:'XSS Attack Blocked'\""
+        - "SecRule REQUEST_COOKIES \"(?i)<script\" \"id:1003,phase:2,deny,status:403,msg:'XSS Cookie Attack Blocked'\""
+        - "SecRule REQUEST_HEADERS:User-Agent \"(?i)(sqlmap|nikto|dirbuster|gobuster)\" \"id:1004,phase:1,deny,status:403,msg:'Malicious Scanner Detected'\""
+        
+        # Simple, safe additions that will not crash Wasm
+        - "SecRule ARGS \"etc/passwd\" \"id:1006,phase:2,deny,status:403,msg:'LFI Blocked'\""
+        - "SecRule ARGS \"\\.\\./\" \"id:1007,phase:2,deny,status:403,msg:'Path Traversal Blocked'\""
+        - "SecRule ARGS \"(?i)javascript:\" \"id:1008,phase:2,deny,status:403,msg:'JS Protocol Blocked'\""
+    default_directives: "default"
+{{- end }}

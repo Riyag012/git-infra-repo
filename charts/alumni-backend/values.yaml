@@ -1,7 +1,7 @@
 image:
-  repository: 192.168.41.90:8082/alumni-backend
+  repository: "" 
   pullPolicy: Always
-  tag: "v5"
+  tag: "" 
 
 service:
   port: 8000

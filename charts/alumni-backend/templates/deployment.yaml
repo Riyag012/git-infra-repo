@@ -5,12 +5,21 @@ metadata:
   labels:
     app: alumni-backend
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: 1
+  {{- end }}
   selector:
     matchLabels:
       app: alumni-backend
   template:
     metadata:
+      annotations:
+        # Merged proxyConfig to prevent duplicate YAML keys
+        sidecar.istio.io/extraStatTags: "request_headers_kb"
+        sidecar.istio.io/proxyConfig: |
+          proxyMetadata:
+            ISTIO_META_HTTP_HEADERS: "true"
+          maxRequestHeadersKb: 128
       labels:
         app: alumni-backend
     spec:
@@ -25,29 +34,42 @@ spec:
               value: {{ .Values.env.NODE_ENV | quote }}
             - name: PORT
               value: {{ .Values.service.targetPort | quote }}
+            
+            # --- 1. The Security Fix: Securely pulling the DB password ---
             - name: MONGO_URI
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.env.secretName }}
                   key: MONGO_URI
-            # --- The missing variables --- 30/05
+                  
+            # --- 2. The Architectural Fix: Dynamic cluster routing ---
             - name: KEYCLOAK_JWKS_URI
               value: {{ .Values.env.KEYCLOAK_JWKS_URI | quote }}
-            - name: KEYCLOAK_ISSUER
-              value: {{ .Values.env.KEYCLOAK_ISSUER | quote }}
             - name: NOTIFICATION_SERVICE_URL
               value: {{ .Values.env.NOTIFICATION_SERVICE_URL | quote }}
-            # -----------------------------
             - name: KEYCLOAK_SERVER_URL
-              value: {{ .Values.env.KEYCLOAK_SERVER_URL | quote }}
+              value: {{ .Values.env.KEYCLOAK_INTERNAL_URL | quote }}
+            
+            # --- Standard Keycloak Configurations ---
+            - name: KEYCLOAK_ISSUER
+              value: {{ .Values.env.KEYCLOAK_ISSUER | quote }}
             - name: KEYCLOAK_REALM
               value: {{ .Values.env.KEYCLOAK_REALM | quote }}
             - name: KEYCLOAK_CLIENT_ID
               value: {{ .Values.env.KEYCLOAK_CLIENT_ID | quote }}
+
+            # --- OBSERVABILITY TELEMETRY INJECTION (Dynamic from values.yaml) ---
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.env.OTEL_EXPORTER_OTLP_ENDPOINT | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.env.OTEL_SERVICE_NAME | quote }}
+            - name: OTEL_LOG_LEVEL
+              value: {{ .Values.env.OTEL_LOG_LEVEL | quote }}
+              
           resources:
             limits:
               cpu: 1000m
               memory: 1Gi
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 50m
+              memory: 128Mi

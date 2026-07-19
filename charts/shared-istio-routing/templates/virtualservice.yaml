@@ -9,6 +9,7 @@ spec:
   gateways:
   - alumni-shared-gateway
   http:
+    # 1. API Traffic -> Backend
     - match:
       - uri:
           prefix: /api
@@ -17,6 +18,19 @@ spec:
           host: alumni-backend-service.{{ .Release.Namespace }}.svc.cluster.local
           port:
             number: 8000
+
+    # 2. DOCUMENTATION TRAFFIC -> Backend (NEW)
+    # This handles both /docs (MkDocs) and /docs/api-docs (Swagger)
+    - match:
+      - uri:
+          prefix: /docs
+      route:
+      - destination:
+          host: alumni-backend-service.{{ .Release.Namespace }}.svc.cluster.local
+          port:
+            number: 8000
+
+    # 3. Authentication Traffic -> Keycloak
     - match:
       - uri:
           prefix: /auth
@@ -25,6 +39,13 @@ spec:
           host: keycloak-service.{{ .Release.Namespace }}.svc.cluster.local
           port:
             number: 8080
+        headers:
+          request:
+            set:
+              x-forwarded-proto: "https"
+              x-forwarded-port: "443"
+
+    # 4. Web UI Traffic -> Frontend React App (Catch-All)
     - match:
       - uri:
           prefix: /

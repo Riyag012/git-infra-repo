@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+        
+    receivers:
+      otlp:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:4317 }
+          # backend and istio sidecar will send traces here over HTTP
+          http: { endpoint: 0.0.0.0:4318 }
+      # zipkin:
+      #   endpoint: 0.0.0.0:9411
+          
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 400
+        spike_limit_mib: 100
+        
+      batch:
+        send_batch_size: 1024
+        timeout: 1s
+        
+    exporters:
+      otlp:
+        # Dynamically targets the correct Tempo instance for Dev OR Prod
+        endpoint: {{ .Values.otel.endpoint | quote }}
+        tls:
+          insecure: true
+      debug: 
+        verbosity: detailed
+        
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]        # add zipkin here if you want to receive traces from zipkin as well
+          processors: [memory_limiter, batch]
+          exporters: [otlp, debug]

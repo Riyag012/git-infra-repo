@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alumni-mongo-data-archive
+  namespace: alumni-portal-prod
+spec:
+  schedule: "35 16 * * *" # Trigger at 4:35 PM Daily
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: mongo-export-agent
+            image: mongo:6.0
+            resources:
+              requests:
+                cpu: "50m"
+                memory: "64Mi"
+              limits:
+                cpu: "100m"
+                memory: "128Mi"
+            command:
+            - /bin/bash
+            - -c
+            - |
+              echo "1. Installing MinIO Client..."
+              apt-get update && apt-get install -y curl
+              curl -O https://dl.min.io/client/mc/release/linux-amd64/mc
+              chmod +x mc
+              
+              echo "2. Connecting to Vault..."
+              # Replace MINIO_USER and MINIO_PASS with your actual .37 desktop credentials
+              ./mc alias set vault http://192.168.41.37:32001 admin root@123
+              
+              echo "3. Executing Logical Export..."
+              mongodump --host mongo-service --username "$MONGO_USER" --password "$MONGO_PASS" --authenticationDatabase admin --archive=/tmp/alumni-mongo.archive
+              
+              echo "4. Streaming to Vault..."
+              ./mc cp /tmp/alumni-mongo.archive vault/prod-cluster-backups/mongo-backup-$(date +%Y%m%d).archive
+              echo "Backup Complete!"
+            env:
+              - name: MONGO_USER
+                valueFrom: { secretKeyRef: { name: alumni-secrets, key: MONGO_INITDB_ROOT_USERNAME } }
+              - name: MONGO_PASS
+                valueFrom: { secretKeyRef: { name: alumni-secrets, key: MONGO_INITDB_ROOT_PASSWORD } }
+          restartPolicy: OnFailure

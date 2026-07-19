@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alumni-routing-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanishkpandey18/git-infra-repo.git'
+    targetRevision: main
+    path: charts/shared-istio-routing
+    helm:
+      parameters:
+        - name: cloudflareToken
+          value: "eyJhIjoiMjdkNTdhZDZhMDY1NGFlNTQzNjY0Nzc0Mjg5YzJmN2IiLCJ0IjoiMGRkMjQ2NmQtODM5My00MGU2LWIwNDEtZWZiNDUxOTk5NmQ5IiwicyI6Ik4yVmhNekk0WmpZdE9UaGtaaTAwTVRaa0xUZzNaVFl0WkRoaFptRmtaVE5rTUdGaSJ9"
+        - name: wafEnabled
+          value: "true"
+  destination:
+    name: prod-cluster
+    namespace: alumni-portal-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

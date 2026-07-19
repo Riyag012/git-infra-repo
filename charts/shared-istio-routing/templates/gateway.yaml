@@ -13,3 +13,14 @@ spec:
       protocol: HTTP
     hosts:
     - "*"
+    # tls:
+    #   httpsRedirect: true  <-- REMOVE OR COMMENT OUT THIS LINE
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: alumni-tls 
+    hosts:
+    - "*"

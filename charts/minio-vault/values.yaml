@@ -1,0 +1,28 @@
+minio:
+  mode: standalone
+  replicas: 1
+
+  rootUser: ""
+  rootPassword: ""
+  existingSecret: "minio-secrets"
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+
+  persistence:
+    enabled: true
+
+  service:
+    type: NodePort
+    port: 9000
+
+  consoleService:
+    type: NodePort
+    port: 9001
+
+  ingress:
+    enabled: false
+
+  buckets: []

@@ -11,5 +11,12 @@ spec:
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
       name: http-api
+
+    #   # --- METRICS INGESTION PORT CONFIGURATION for Prometheus Operator ServiceMonitor ---
+    # - port: {{ .Values.service.port }}
+    #   targetPort: {{ .Values.service.targetPort }}
+    #   protocol: TCP
+    #   name: http-metrics
+    
   selector:
     app: alumni-backend

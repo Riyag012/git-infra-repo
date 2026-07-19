@@ -1,0 +1,9 @@
+apiVersion: v2
+name: nexus-infra
+description: Enterprise Nexus deployment for HPE cluster
+type: application
+version: 1.0.0
+dependencies:
+  - name: nexus-repository-manager
+    version: 64.x.x # Matches up to Nexus 3.x line safely
+    repository: https://sonatype.github.io/helm3-charts/

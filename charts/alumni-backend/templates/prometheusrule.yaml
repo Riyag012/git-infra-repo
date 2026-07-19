@@ -1,0 +1,58 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-backend-sla-rules
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Values.prometheus.release | default "alumni-observability-dev" }}
+spec:
+  groups:
+  - name: backend.slas
+    rules:
+    # 1. Memory SLA (Existing)
+    # 1. Corrected Memory SLA: Evaluates per-pod
+    - alert: BackendMemorySLABreach
+      expr: sum by (pod) (container_memory_working_set_bytes{namespace="alumni-portal-dev", pod=~"alumni-backend.*"}) / 1024 / 1024 > 600
+      for: 1m
+      labels:
+        severity: critical
+        routing_key: pagerduty 
+      annotations:
+        summary: "SLA Breach: Backend memory usage is critical"
+        description: "The backend application memory in alumni-portal-dev has exceeded 600MB for over 1 minute."
+
+    # 2. High Error Rate SLA (5xx > 5%)
+    - alert: BackendHighErrorRate
+      expr: |
+        sum(rate(http_requests_total{namespace="alumni-portal-dev", status=~"4.."}[2m])) 
+        / sum(rate(http_requests_total{namespace="alumni-portal-dev"}[2m])) > 0.05
+      for: 1m
+      labels:
+        severity: critical
+        routing_key: pagerduty
+      annotations:
+        summary: "SLA Breach: High Error Rate"
+        description: "Over 5% of requests are returning 5xx errors for 1 minute."
+
+    # 3. High Latency SLA (P95 > 1.5s)
+    - alert: BackendHighLatency
+      expr: |
+        histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="alumni-portal-dev"}[5m])) by (le)) > 1.5
+      for: 2m
+      labels:
+        severity: warning
+        routing_key: pagerduty
+      annotations:
+        summary: "SLA Warning: High Latency"
+        description: "95th percentile latency is above 1.5s for 2 minutes."
+
+    # 4. Corrected Crash Loop SLA: Uses mathematical increase
+    - alert: BackendCrashLooping
+      expr: increase(kube_pod_container_status_restarts_total{namespace="alumni-portal-dev", pod=~"alumni-backend.*"}[10m]) > 3
+      for: 0m
+      labels:
+        severity: critical
+        routing_key: pagerduty
+      annotations:
+        summary: "SLA Breach: CrashLoopDetected"
+        description: "Backend pod has restarted more than 3 times in 10 minutes."
