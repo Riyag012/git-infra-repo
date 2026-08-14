@@ -20,9 +20,20 @@ env:
   secretName: "alumni-secrets"
   KEYCLOAK_ADMIN: "admin"
   KEYCLOAK_ADMIN_PASSWORD: "admin"
+  KEYCLOAK_ISSUER: "https://192.168.41.88/auth/realms/application"
 
+  # OTEL_SERVICE_NAME: ""
+  # OTEL_EXPORTER_OTLP_ENDPOINT: ""
+
+  # OTEL_LOG_LEVEL: ""
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 60
   # NOTE ON THIS ISSUER URL:
   # This must remain the PUBLIC URL that your frontend uses. 
   # In production, change this IP to your actual domain name (e.g., https://alumni.jecrc.xyz/auth/realms/application)
-  KEYCLOAK_ISSUER: "https://192.168.41.88/auth/realms/application"
+  
   
